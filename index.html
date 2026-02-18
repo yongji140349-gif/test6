@@ -1,0 +1,117 @@
+import React, { useState, useRef } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { motion } from "framer-motion";
+
+export default function VoiceSheetAssistant() {
+  const [text, setText] = useState("");
+  const [messages, setMessages] = useState([
+    { role: "bot", text: "สวัสดี 👋 ฉันช่วยตอบคำถามเกี่ยวกับการใช้โปรแกรมตารางคำนวณ (Sheet) ได้ ลองพูดหรือพิมพ์คำถาม เช่น 'สูตร SUM ใช้ยังไง'" }
+  ]);
+  const recognitionRef = useRef(null);
+
+  // ======================
+  // Speech To Text
+  // ======================
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("เบราว์เซอร์ไม่รองรับ Speech Recognition");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "th-TH";
+    recognition.start();
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setText(transcript);
+    };
+
+    recognitionRef.current = recognition;
+  };
+
+  // ======================
+  // Text To Speech
+  // ======================
+  const speak = (message) => {
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = "th-TH";
+    speechSynthesis.speak(utterance);
+  };
+
+  // ======================
+  // Generate Sheet Help
+  // ======================
+  const generateResponse = (input) => {
+    input = input.toLowerCase();
+
+    if (input.includes("sum")) {
+      return "📌 สูตร SUM ใช้สำหรับบวกค่า เช่น =SUM(A1:A10)";
+    }
+
+    if (input.includes("average")) {
+      return "📌 สูตร AVERAGE ใช้หาค่าเฉลี่ย เช่น =AVERAGE(A1:A10)";
+    }
+
+    if (input.includes("if")) {
+      return "📌 สูตร IF ใช้กำหนดเงื่อนไข เช่น =IF(A1>50, 'ผ่าน', 'ไม่ผ่าน')";
+    }
+
+    if (input.includes("vlookup")) {
+      return "📌 สูตร VLOOKUP ใช้ค้นหาข้อมูล เช่น =VLOOKUP(A2, A1:B10, 2, FALSE)";
+    }
+
+    return "❓ ลองถามเกี่ยวกับ SUM, AVERAGE, IF หรือ VLOOKUP";
+  };
+
+  const handleSend = () => {
+    if (!text) return;
+
+    const userMsg = { role: "user", text };
+    const botText = generateResponse(text);
+    const botMsg = { role: "bot", text: botText };
+
+    setMessages([...messages, userMsg, botMsg]);
+    speak(botText);
+    setText("");
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
+      <Card className="w-full max-w-2xl shadow-xl rounded-2xl">
+        <CardContent className="p-6">
+          <h1 className="text-2xl font-bold mb-4">🎙️ Voice Sheet Assistant</h1>
+
+          <div className="h-80 overflow-y-auto border rounded-xl p-4 mb-4 space-y-3">
+            {messages.map((msg, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`p-3 rounded-2xl ${msg.role === "bot" ? "bg-gray-100" : "bg-blue-100 text-right"}`}
+              >
+                {msg.text}
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 mb-2">
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="พิมพ์หรือกดปุ่มพูด..."
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={startListening}>🎤 พูด</Button>
+            <Button onClick={handleSend}>ส่ง</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
